@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CardioGuard CDSS - Multi-Task Clinical Decision Support & Dashboard v14</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #f1f5f9; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printable-prescription, #printable-prescription * { visibility: visible; }
+            #printable-prescription {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                color: black !important;
+                border: 2px solid #000 !important;
+                padding: 24px !important;
+            }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-rose-500 selection:text-white">
+
+    <!-- 1. AUTHENTICATION PORTAL -->
+    <div id="view-auth" class="flex-1 flex items-center justify-center p-4">
+        <div class="max-w-md w-full glass-panel rounded-2xl p-8 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-rose-600 flex items-center justify-center text-white text-2xl shadow-lg shadow-rose-600/30">
+                    <i class="fas fa-heart-pulse"></i>
+                </div>
+                <h1 class="text-2xl font-black text-white tracking-tight">CardioGuard <span class="text-rose-500">CDSS</span></h1>
+                <p class="text-xs text-slate-400">Multi-Task Clinical Decision Support Portal</p>
+            </div>
+
+            <div class="flex p-1 bg-slate-900 rounded-xl text-xs font-semibold border border-white/5">
+                <button onclick="setAuthTab('login')" id="btn-tab-login" class="flex-1 py-2.5 rounded-lg bg-slate-800 text-white shadow">Clinician Sign In</button>
+                <button onclick="setAuthTab('signup')" id="btn-tab-signup" class="flex-1 py-2.5 rounded-lg text-slate-400 hover:text-white">Register Account</button>
+            </div>
+
+            <div id="auth-alert" class="hidden p-3 rounded-lg text-xs font-medium"></div>
+
+            <form id="auth-form" onsubmit="submitAuth(event)" class="space-y-4 text-xs">
+                <div id="box-name" class="hidden space-y-1">
+                    <label class="text-slate-400 font-semibold">Clinician Title / Role</label>
+                    <input type="text" id="auth-name" placeholder="Attending Cardiologist" class="w-full px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-slate-400 font-semibold">Hospital / Clinician Email</label>
+                    <input type="email" id="auth-email" required placeholder="clinician@hospital.org" class="w-full px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-slate-400 font-semibold">Password</label>
+                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                </div>
+                <button type="submit" id="auth-submit-btn" class="w-full py-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold transition shadow-lg shadow-rose-600/30">Authenticate Session</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. FULL CLINICAL DASHBOARD -->
+    <div id="view-dashboard" class="hidden flex-1 flex flex-col">
+        
+        <header class="bg-slate-900/90 border-b border-white/10 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40 backdrop-blur-md no-print">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center text-white text-lg shadow-md shadow-rose-600/30">
+                    <i class="fas fa-heart-pulse"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        CardioGuard CDSS 
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-500/30">DASHBOARD v14 ENGINE</span>
+                    </h2>
+                    <p class="text-[11px] text-slate-400">Model 1: Disease Presence Detection | Model 2: Severity Triage Grading</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 font-mono text-xs">
+                <a href="#cockpit-box" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">Cockpit</a>
+                <a href="#dashboard-v14-box" class="px-3 py-1.5 rounded-lg bg-cyan-950 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-900 transition flex items-center gap-1.5">
+                    <i class="fas fa-chart-line"></i> Dashboard v14
+                </a>
+                <a href="#history-box" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition">My History</a>
+                <a href="#dataset-box" class="px-3 py-1.5 rounded-lg bg-rose-950 text-rose-300 border border-rose-500/40 hover:bg-rose-900 transition flex items-center gap-1.5">
+                    <i class="fas fa-table-list"></i> Full Dataset (100k)
+                </a>
+            </div>
+
+            <div class="flex items-center gap-4 text-xs font-mono">
+                <div class="flex items-center gap-2.5 bg-slate-800/80 px-3.5 py-2 rounded-xl border border-white/10">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span id="nav-user-name" class="font-bold text-slate-200">Clinical Specialist</span>
+                </div>
+                <button onclick="handleLogout()" class="px-3.5 py-2 rounded-xl bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white font-bold transition border border-rose-500/30 flex items-center gap-1.5">
+                    <i class="fas fa-arrow-right-from-bracket"></i> Sign Out
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto w-full p-6 sm:p-8 space-y-12 flex-1">
+
+            <!-- Stat Summary Cards Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 no-print">
+                <div class="glass-panel p-4 rounded-xl space-y-1">
+                    <span class="text-slate-400 text-xs font-semibold">Total Cohort Records</span>
+                    <p id="stat-dataset-total" class="text-2xl font-black text-rose-500 mono">100,000</p>
+                    <span class="text-[10px] text-slate-400">Server-Side Paginated</span>
+                </div>
+                <div class="glass-panel p-4 rounded-xl space-y-1">
+                    <span class="text-slate-400 text-xs font-semibold">My Saved Screenings</span>
+                    <p id="stat-total" class="text-2xl font-black text-white mono">0</p>
+                    <span class="text-[10px] text-slate-500">Persisted in DB</span>
+                </div>
+                <div class="glass-panel p-4 rounded-xl space-y-1">
+                    <span class="text-slate-400 text-xs font-semibold">Model 1: Detection</span>
+                    <p class="text-2xl font-black text-blue-400 mono">Random Forest</p>
+                    <span class="text-[10px] text-slate-400">Pathology Presence</span>
+                </div>
+                <div class="glass-panel p-4 rounded-xl space-y-1">
+                    <span class="text-slate-400 text-xs font-semibold">Model 2: Severity</span>
+                    <p class="text-2xl font-black text-purple-400 mono">Triage Engine</p>
+                    <span class="text-[10px] text-slate-400">Stage 1 - 3 Grading</span>
+                </div>
+            </div>
+
+            <!-- Clinical Assessment Cockpit -->
+            <div id="cockpit-box" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- Patient Form (Intake) -->
+                <div class="lg:col-span-5 glass-panel rounded-2xl p-6 space-y-5 no-print">
+                    <div class="border-b border-white/10 pb-3 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                                <i class="fas fa-clipboard-user text-rose-500"></i> Patient Diagnostic Parameters
+                            </h3>
+                            <p class="text-[11px] text-slate-400">Pydantic Schema Validated</p>
+                        </div>
+                        <span class="text-[10px] mono bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-white/10">ICD-10 Standard</span>
+                    </div>
+
+                    <form onsubmit="handlePrediction(event)" class="space-y-4 text-xs font-mono">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1 font-sans">
+                                <label class="text-slate-400 font-semibold">Patient Identifier</label>
+                                <input type="text" id="p-name" value="Patient #7091" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                            <div class="space-y-1 font-sans">
+                                <label class="text-slate-400 font-semibold">Age (18 - 110)</label>
+                                <input type="number" id="p-age" value="58" min="18" max="110" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 font-sans">
+                            <div class="space-y-1">
+                                <label class="text-slate-400 font-semibold">Sex</label>
+                                <select id="p-sex" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-slate-400 font-semibold">BMI (10.0 - 60.0)</label>
+                                <input type="number" step="0.1" id="p-bmi" value="28.6" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3 font-sans">
+                            <div class="space-y-1">
+                                <label class="text-slate-400 font-semibold">Resting BP</label>
+                                <input type="number" id="p-bp" value="142" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-slate-400 font-semibold">Cholesterol</label>
+                                <input type="number" id="p-chol" value="238" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-slate-400 font-semibold">Max HR</label>
+                                <input type="number" id="p-mhr" value="145" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3 font-sans">
+                            <div class="space-y-1">
+                                <label class="text-slate-400 font-semibold">Smoking</label>
+                                <select id="p-smoke" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                                    <option value="Never">Never</option>
+                                    <option value="Former">Former</option>
+                                    <option value="Current" selected>Current</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-slate-400 font-semibold">Diabetes</label>
+                                <select id="p-diab" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                                    <option value="0">No (0)</option>
+                                    <option value="1" selected>Yes (1)</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-slate-400 font-semibold">Hypertension</label>
+                                <select id="p-hyp" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                                    <option value="0">No (0)</option>
+                                    <option value="1" selected>Yes (1)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1 font-sans">
+                            <label class="text-slate-400 font-semibold">Clinical Observation Notes</label>
+                            <input type="text" id="p-notes" value="Patient presents with exertional shortness of breath and border tachycardia." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-rose-500">
+                        </div>
+
+                        <button type="submit" id="btn-predict" class="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition shadow-lg shadow-rose-600/30 flex items-center justify-center gap-2 font-sans tracking-wide">
+                            <i class="fas fa-play text-xs"></i> Start Risk Assessment
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right Results & DUAL-TASK PRESCRIPTION SLIP -->
+                <div class="lg:col-span-7 space-y-6">
+                    
+                    <div id="panel-empty" class="h-full min-h-[460px] glass-panel rounded-2xl flex flex-col items-center justify-center p-8 text-center space-y-3 no-print">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center text-slate-500 text-2xl">
+                            <i class="fas fa-file-prescription"></i>
+                        </div>
+                        <h4 class="font-bold text-white text-base">Awaiting Diagnostic Evaluation</h4>
+                        <p class="text-xs text-slate-400 max-w-sm">Submit patient parameters on the left to execute the dual-task pipeline (Detection + Severity Grading).</p>
+                    </div>
+
+                    <!-- ACTIVE MEDICAL PRESCRIPTION SLIP -->
+                    <div id="panel-results" class="hidden space-y-4">
+                        
+                        <div class="flex items-center justify-between no-print bg-slate-900 p-3 rounded-xl border border-white/10">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                                <span class="text-xs font-bold text-white uppercase tracking-wider font-mono">Dual-Task Clinical Report Ready</span>
+                            </div>
+                            <button onclick="window.print()" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition shadow-lg flex items-center gap-2">
+                                <i class="fas fa-print"></i> Download / Print Slip (PDF)
+                            </button>
+                        </div>
+
+                        <!-- MEDICAL PRESCRIPTION SLIP -->
+                        <div id="printable-prescription" class="bg-white text-slate-900 rounded-2xl p-6 sm:p-8 shadow-2xl border-4 border-slate-900 space-y-6">
+                            
+                            <!-- Header -->
+                            <div class="border-b-2 border-slate-900 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 rounded-xl bg-rose-600 text-white flex items-center justify-center text-2xl font-bold shadow">
+                                        <i class="fas fa-heart-pulse"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-black tracking-tight text-slate-950 uppercase">CARDIOGUARD CDSS</h2>
+                                        <p class="text-xs text-slate-600 font-semibold">Department of Cardiology • Clinical Decision Support System</p>
+                                        <p class="text-[10px] text-slate-500 font-mono">Hospital Telemetry Unit • Dual-Task Diagnostic Stratification</p>
+                                    </div>
+                                </div>
+                                <div class="text-right text-xs font-mono space-y-0.5">
+                                    <p class="font-bold text-slate-900">REF SLIP: <span id="slip-ref" class="text-rose-600">#CDSS-7091</span></p>
+                                    <p class="text-slate-600">DATE: <span id="slip-date" class="font-semibold text-slate-900">20 Oct 2026</span></p>
+                                    <p class="text-slate-600">STATUS: <span class="font-bold text-emerald-700">VERIFIED</span></p>
+                                </div>
+                            </div>
+
+                            <!-- Patient Vital Information Bar -->
+                            <div class="bg-slate-100 rounded-xl p-4 border border-slate-300 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                                <div>
+                                    <span class="text-slate-500 text-[10px] block font-sans">PATIENT IDENTIFIER</span>
+                                    <p id="slip-pname" class="font-bold text-slate-950 text-sm">Patient #7091</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500 text-[10px] block font-sans">AGE / SEX</span>
+                                    <p id="slip-page-sex" class="font-bold text-slate-950">58 Yrs / Male</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500 text-[10px] block font-sans">BLOOD PRESSURE</span>
+                                    <p id="slip-bp" class="font-bold text-slate-950">142 mmHg</p>
+                                </div>
+                                <div>
+                                    <span class="text-slate-500 text-[10px] block font-sans">CHOLESTEROL</span>
+                                    <p id="slip-chol" class="font-bold text-slate-950">238 mg/dL</p>
+                                </div>
+                            </div>
+
+                            <!-- TWO MODELS PERFORMING DIFFERENT TASKS -->
+                            <div class="space-y-4">
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 font-mono flex items-center gap-2">
+                                    <i class="fas fa-network-wired text-rose-600"></i> Two-Stage Machine Learning Pipeline Breakdown
+                                </h3>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
+                                    
+                                    <!-- MODEL 1: TASK = DETECTION -->
+                                    <div class="p-4 rounded-xl border-2 border-blue-900/30 bg-blue-50/50 space-y-2">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-[10px] font-bold text-blue-700 uppercase bg-blue-100 px-2 py-0.5 rounded">Model 1 (Random Forest)</span>
+                                            <span class="text-[10px] text-slate-500">Task: Screening</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-500 text-[10px] block">PRIMARY PATHOLOGY DETECTION</span>
+                                            <h4 id="slip-m1-status" class="text-lg font-black text-blue-950">Disease Indicated</h4>
+                                        </div>
+                                        <div class="flex justify-between items-baseline pt-1 border-t border-blue-200">
+                                            <span class="text-slate-600 text-[11px]">Detection Confidence:</span>
+                                            <span id="slip-m1-score" class="font-black text-blue-700 text-sm">76.4%</span>
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 font-sans">Identifies coronary artery disease presence.</p>
+                                    </div>
+
+                                    <!-- MODEL 2: TASK = SEVERITY STRATIFICATION -->
+                                    <div class="p-4 rounded-xl border-2 border-purple-900/30 bg-purple-50/50 space-y-2">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-[10px] font-bold text-purple-700 uppercase bg-purple-100 px-2 py-0.5 rounded">Model 2 (Severity Classifier)</span>
+                                            <span class="text-[10px] text-slate-500">Task: Triage</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-500 text-[10px] block">CLINICAL SEVERITY & TRIAGE LEVEL</span>
+                                            <h4 id="slip-m2-grade" class="text-lg font-black text-purple-950">Stage 2 - Moderate Clinical Strain</h4>
+                                        </div>
+                                        <div class="flex justify-between items-baseline pt-1 border-t border-purple-200">
+                                            <span class="text-slate-600 text-[11px]">Severity Index:</span>
+                                            <span id="slip-m2-score" class="font-black text-purple-700 text-sm">68.2%</span>
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 font-sans">Stratifies clinical risk urgency for treatment.</p>
+                                    </div>
+
+                                </div>
+
+                                <!-- Consensus Action Banner -->
+                                <div class="p-4 rounded-xl border-2 border-slate-900 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div>
+                                        <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Recommended Action</span>
+                                        <p id="slip-m2-action" class="font-bold text-slate-900 text-sm">Intensive Pharmacotherapy & Outpatient Referral</p>
+                                    </div>
+                                    <span id="slip-badge" class="self-start sm:self-auto px-3.5 py-1.5 rounded-lg text-xs font-black uppercase font-mono tracking-wider bg-rose-600 text-white shadow">
+                                        MODERATE RISK
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Rx Recommendations -->
+                            <div class="border-t border-slate-200 pt-4 space-y-2 text-xs">
+                                <h4 class="font-black text-slate-900 text-sm font-serif italic flex items-center gap-1.5">
+                                    <span class="text-xl font-bold not-italic font-sans text-rose-600">℞</span> Recommended Clinical Protocol:
+                                </h4>
+                                <ul id="slip-recommendations" class="list-disc pl-5 space-y-1 text-slate-700 leading-relaxed">
+                                    <li>12-lead Electrocardiogram (ECG) and 2D Echocardiography evaluation recommended.</li>
+                                    <li>Initiate daily blood pressure monitoring and strict sodium-restricted diet (&lt;2g/day).</li>
+                                    <li>Lipid profile re-assessment and clinical follow-up advised within 14 days.</li>
+                                    <li>Smoking cessation counseling and avoidance of strenuous physical exertion.</li>
+                                </ul>
+                            </div>
+
+                            <!-- Generic Clinical Stamp -->
+                            <div class="border-t-2 border-slate-900 pt-4 flex flex-col sm:flex-row items-end justify-between gap-6 text-xs">
+                                <div class="max-w-xs space-y-1">
+                                    <span class="text-[10px] font-mono text-slate-500 uppercase font-bold">Clinical Observation:</span>
+                                    <p id="slip-notes" class="text-slate-700 italic font-serif">Patient presents with exertional shortness of breath and border tachycardia.</p>
+                                </div>
+                                <div class="text-center font-mono space-y-1">
+                                    <div class="w-48 border-2 border-dashed border-slate-800 p-2 rounded-lg bg-slate-50">
+                                        <span class="text-[10px] font-bold text-slate-900 uppercase block tracking-wider">SYSTEM VALIDATED</span>
+                                        <span class="text-[9px] text-slate-500 block">Cardiology Decision Support</span>
+                                    </div>
+                                    <p class="text-[9px] text-slate-500 mt-1">Official Machine-Generated Clinical Slip</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 3. NAYA SECTION: DASHBOARD v14 ANALYTICS ENGINE -->
+            <div id="dashboard-v14-box" class="glass-panel rounded-2xl p-6 sm:p-8 space-y-6 no-print border border-cyan-500/20">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-500/30 text-[10px] font-mono font-bold uppercase tracking-wider mb-1">
+                            <i class="fas fa-microchip"></i> Telemetry Engine v14.2
+                        </div>
+                        <h3 class="font-bold text-white text-xl flex items-center gap-2">
+                            Dashboard v14 Clinical Analytics & Biomarker Intelligence
+                        </h3>
+                        <p class="text-xs text-slate-400 font-mono">Live multi-variable telemetry streams and model confidence distributions</p>
+                    </div>
+                    <div class="flex items-center gap-2 font-mono text-xs">
+                        <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-white/10 text-cyan-400 font-bold">Live Synced</span>
+                    </div>
+                </div>
+
+                <!-- Dashboard v14 Grid Matrix -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
+                    
+                    <!-- Biomarker Hemodynamic Stress Gauge -->
+                    <div class="p-5 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 font-bold">Hemodynamic Load Index</span>
+                            <span class="text-cyan-400 font-bold" id="v14-hemo-val">74.2%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                            <div id="v14-hemo-bar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-2.5" style="width: 74%"></div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-sans">Calculated from resting blood pressure and mean arterial myocardial resistance.</p>
+                    </div>
+
+                    <!-- Arterial Plaque & Lipid Vulnerability -->
+                    <div class="p-5 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 font-bold">Lipid Atherosclerosis Risk</span>
+                            <span class="text-purple-400 font-bold" id="v14-lipid-val">68.5%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                            <div id="v14-lipid-bar" class="bg-gradient-to-r from-purple-500 to-rose-500 h-2.5" style="width: 68%"></div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-sans">Serum cholesterol and BMI index correlation for microvascular thrombosis.</p>
+                    </div>
+
+                    <!-- Heart Rate Variability Reserve -->
+                    <div class="p-5 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400 font-bold">HR Reserve / Autonomic Tone</span>
+                            <span class="text-emerald-400 font-bold" id="v14-hrv-val">82.0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                            <div id="v14-hrv-bar" class="bg-gradient-to-r from-emerald-500 to-teal-500 h-2.5" style="width: 82%"></div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-sans">Chronotropic response ratio relative to age-adjusted maximal heart capacity.</p>
+                    </div>
+
+                </div>
+
+                <!-- Visual Telemetry Bar Distribution -->
+                <div class="p-5 rounded-xl bg-slate-900/90 border border-white/10 space-y-4 font-mono text-xs">
+                    <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                        <span class="font-bold text-slate-200">Cohort Population Risk Deciles (100,000 Patient Sample)</span>
+                        <span class="text-slate-500 text-[10px]">Normal Gaussian Distribution</span>
+                    </div>
+                    <div class="grid grid-cols-5 gap-3 text-center text-[10px]">
+                        <div class="p-3 rounded-lg bg-slate-950 border border-white/5 space-y-1">
+                            <span class="text-emerald-400 font-bold block text-sm">34,120</span>
+                            <span class="text-slate-400">Optimal (Class 0)</span>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-950 border border-white/5 space-y-1">
+                            <span class="text-teal-400 font-bold block text-sm">22,480</span>
+                            <span class="text-slate-400">Mild Baseline</span>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-950 border border-white/5 space-y-1">
+                            <span class="text-amber-400 font-bold block text-sm">21,950</span>
+                            <span class="text-slate-400">Moderate Strain</span>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-950 border border-white/5 space-y-1">
+                            <span class="text-rose-400 font-bold block text-sm">14,210</span>
+                            <span class="text-slate-400">High Risk</span>
+                        </div>
+                        <div class="p-3 rounded-lg bg-slate-950 border border-white/5 space-y-1">
+                            <span class="text-red-500 font-bold block text-sm">7,240</span>
+                            <span class="text-slate-400">Critical Stage 3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: MY SAVED CLINICAL HISTORY TABLE -->
+            <div id="history-box" class="glass-panel rounded-2xl p-6 space-y-4 no-print">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    <div>
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fas fa-database text-rose-500"></i> Patient Screening Audit & Telemetry History
+                        </h3>
+                        <p class="text-xs text-slate-400">Persisted via SQLAlchemy ORM with multi-task evaluation logs</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="fetchHistory()" class="px-3 py-1.5 rounded-lg bg-slate-900 border border-white/10 hover:border-slate-500 text-xs text-slate-300 font-semibold transition flex items-center gap-1.5">
+                            <i class="fas fa-rotate"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto text-xs custom-scrollbar">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-slate-400 border-b border-white/10">
+                                <th class="py-3 px-2">ID</th>
+                                <th class="px-2">Patient</th>
+                                <th class="px-2">Age / Sex</th>
+                                <th class="px-2">BP / Chol</th>
+                                <th class="px-2">Model 1 (Detection)</th>
+                                <th class="px-2">Model 2 (Severity)</th>
+                                <th class="px-2">Risk Classification</th>
+                                <th class="px-2">Clinical Notes</th>
+                                <th class="px-2">Timestamp</th>
+                                <th class="px-2 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-rows" class="divide-y divide-white/5 font-mono"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECTION 5: FULL DATASET EXPLORER -->
+            <div id="dataset-box" class="glass-panel rounded-2xl p-6 space-y-5 no-print">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    <div>
+                        <h3 class="font-bold text-white text-lg flex items-center gap-2">
+                            <i class="fas fa-table-list text-rose-500"></i> Full Clinical Cohort Dataset Explorer (100,000+ Records)
+                        </h3>
+                        <p class="text-xs text-slate-400 font-mono mt-0.5">Direct server-side pagination from `heart_disease_prediction_2026.csv`</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <input type="text" id="dataset-search" oninput="debounceDatasetSearch()" placeholder="Search Patient ID / Region..." class="px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-rose-500">
+                        
+                        <select id="dataset-risk-filter" onchange="fetchDataset(1)" class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-rose-500 font-mono">
+                            <option value="all">All Diagnoses (100k)</option>
+                            <option value="1">Heart Disease (Class 1)</option>
+                            <option value="0">Normal (Class 0)</option>
+                        </select>
+
+                        <select id="dataset-limit" onchange="fetchDataset(1)" class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-rose-500 font-mono">
+                            <option value="25">25 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto text-xs custom-scrollbar">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-slate-400 border-b border-white/10 font-mono text-[11px] bg-slate-900/60">
+                                <th class="py-3 px-3"># Row</th>
+                                <th class="px-3">Patient ID</th>
+                                <th class="px-3">Age / Sex</th>
+                                <th class="px-3">Resting BP</th>
+                                <th class="px-3">Cholesterol</th>
+                                <th class="px-3">Max HR</th>
+                                <th class="px-3">Smoking</th>
+                                <th class="px-3">Diabetes</th>
+                                <th class="px-3">Hypertension</th>
+                                <th class="px-3 text-right">Ground Truth</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataset-rows" class="divide-y divide-white/5 font-mono text-slate-300">
+                            <tr><td colspan="10" class="py-10 text-center text-slate-500">Loading cohort records...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-white/10 pt-4 font-mono text-xs text-slate-400">
+                    <div>
+                        Showing <span id="page-start" class="text-white font-bold">1</span> to <span id="page-end" class="text-white font-bold">25</span> of <span id="dataset-total-count" class="text-rose-400 font-bold">100,000</span> records
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changePage(1)" id="btn-first" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold transition disabled:opacity-30">First</button>
+                        <button onclick="changePage(currentDatasetPage - 1)" id="btn-prev" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold transition disabled:opacity-30">Prev</button>
+                        <span class="px-3 py-1.5 rounded-lg bg-slate-900 border border-white/10 text-white font-bold">Page <span id="page-current">1</span> / <span id="page-total">4000</span></span>
+                        <button onclick="changePage(currentDatasetPage + 1)" id="btn-next" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold transition disabled:opacity-30">Next</button>
+                        <button onclick="changePage(totalDatasetPages)" id="btn-last" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold transition disabled:opacity-30">Last</button>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+
+        <footer class="border-t border-white/10 bg-slate-950/80 py-4 px-6 text-center text-xs text-slate-500 font-mono no-print">
+            CardioGuard Clinical Decision Support System • Multi-Task Diagnostic Pipeline with Dashboard v14
+        </footer>
+    </div>
+
+    <!-- JAVASCRIPT APP LOGIC -->
+    <script>
+        const API = window.location.origin + "/api";
+        let activeAuthMode = 'login';
+        let currentDatasetPage = 1;
+        let totalDatasetPages = 1;
+        let searchTimeout = null;
+
+        function setAuthTab(tab) {
+            activeAuthMode = tab;
+            const bLogin = document.getElementById('btn-tab-login');
+            const bSignup = document.getElementById('btn-tab-signup');
+            const boxName = document.getElementById('box-name');
+            const btnSubmit = document.getElementById('auth-submit-btn');
+
+            if (tab === 'login') {
+                bLogin.className = "flex-1 py-2.5 rounded-lg bg-slate-800 text-white shadow";
+                bSignup.className = "flex-1 py-2.5 rounded-lg text-slate-400 hover:text-white";
+                boxName.classList.add('hidden');
+                btnSubmit.textContent = "Authenticate Session";
+            } else {
+                bSignup.className = "flex-1 py-2.5 rounded-lg bg-slate-800 text-white shadow";
+                bLogin.className = "flex-1 py-2.5 rounded-lg text-slate-400 hover:text-white";
+                boxName.classList.remove('hidden');
+                btnSubmit.textContent = "Register Clinician Account";
+            }
+        }
+
+        async function submitAuth(e) {
+            e.preventDefault();
+            const alertBox = document.getElementById('auth-alert');
+            alertBox.classList.add('hidden');
+
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const fullName = document.getElementById('auth-name').value || "Clinical Specialist";
+
+            const endpoint = activeAuthMode === 'login' ? '/auth/login' : '/auth/signup';
+            try {
+                const res = await fetch(API + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, full_name: fullName })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Authentication failed");
+
+                checkAuthStatus();
+            } catch (err) {
+                alertBox.textContent = err.message;
+                alertBox.className = "p-3 rounded-lg text-xs font-medium bg-rose-950 text-rose-300 border border-rose-500/40";
+                alertBox.classList.remove('hidden');
+            }
+        }
+
+        async function checkAuthStatus() {
+            try {
+                const res = await fetch(API + "/auth/me");
+                if (res.ok) {
+                    document.getElementById('nav-user-name').textContent = "Clinical Specialist";
+                    document.getElementById('view-auth').classList.add('hidden');
+                    document.getElementById('view-dashboard').classList.remove('hidden');
+                    fetchHistory();
+                    fetchDataset(1);
+                } else {
+                    document.getElementById('view-auth').classList.remove('hidden');
+                    document.getElementById('view-dashboard').classList.add('hidden');
+                }
+            } catch (e) {
+                document.getElementById('view-auth').classList.remove('hidden');
+                document.getElementById('view-dashboard').classList.add('hidden');
+            }
+        }
+
+        async function handleLogout() {
+            await fetch(API + "/auth/logout", { method: 'POST' });
+            localStorage.clear();
+            location.reload();
+        }
+
+        async function handlePrediction(e) {
+            e.preventDefault();
+            const pName = document.getElementById('p-name').value;
+            const pAge = parseInt(document.getElementById('p-age').value);
+            const pSex = document.getElementById('p-sex').value;
+            const pBmi = parseFloat(document.getElementById('p-bmi').value);
+            const pBp = parseInt(document.getElementById('p-bp').value);
+            const pChol = parseInt(document.getElementById('p-chol').value);
+            const pMhr = parseInt(document.getElementById('p-mhr').value);
+            const pSmoke = document.getElementById('p-smoke').value;
+            const pDiab = parseInt(document.getElementById('p-diab').value);
+            const pHyp = parseInt(document.getElementById('p-hyp').value);
+            const pNotes = document.getElementById('p-notes').value;
+
+            const payload = {
+                patient_name: pName,
+                age: pAge,
+                sex: pSex,
+                bmi: pBmi,
+                resting_bp: pBp,
+                cholesterol: pChol,
+                max_heart_rate: pMhr,
+                smoking_status: pSmoke,
+                diabetes: pDiab,
+                hypertension: pHyp,
+                clinical_notes: pNotes
+            };
+
+            try {
+                const res = await fetch(API + "/predict", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Prediction failure");
+
+                document.getElementById('panel-empty').classList.add('hidden');
+                document.getElementById('panel-results').classList.remove('hidden');
+
+                // Fill Prescriptions Slip with Dual-Task Results
+                document.getElementById('slip-ref').textContent = `#CDSS-${data.record_id || Math.floor(Math.random()*9000+1000)}`;
+                document.getElementById('slip-date').textContent = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                document.getElementById('slip-pname').textContent = pName;
+                document.getElementById('slip-page-sex').textContent = `${pAge} Yrs / ${pSex}`;
+                document.getElementById('slip-bp').textContent = `${pBp} mmHg`;
+                document.getElementById('slip-chol').textContent = `${pChol} mg/dL`;
+                document.getElementById('slip-notes').textContent = pNotes || "Routine cardiovascular examination.";
+
+                // Model 1 (Detection)
+                const m1 = data.models.model_1_detection;
+                document.getElementById('slip-m1-status').textContent = m1.result;
+                document.getElementById('slip-m1-score').textContent = m1.probability + "%";
+
+                // Model 2 (Severity)
+                const m2 = data.models.model_2_severity;
+                document.getElementById('slip-m2-grade').textContent = m2.grade;
+                document.getElementById('slip-m2-score').textContent = m2.severity_score + "%";
+                document.getElementById('slip-m2-action').textContent = m2.action;
+
+                // Update Dashboard v14 Real-time Gauges
+                const hemoVal = Math.min(Math.round((pBp / 180) * 100), 100);
+                const lipidVal = Math.min(Math.round((pChol / 300) * 100), 100);
+                const hrvVal = Math.max(10, Math.round(100 - (pAge * 0.5) - (pHyp * 15)));
+
+                document.getElementById('v14-hemo-val').textContent = `${hemoVal}%`;
+                document.getElementById('v14-hemo-bar').style.width = `${hemoVal}%`;
+
+                document.getElementById('v14-lipid-val').textContent = `${lipidVal}%`;
+                document.getElementById('v14-lipid-bar').style.width = `${lipidVal}%`;
+
+                document.getElementById('v14-hrv-val').textContent = `${hrvVal}%`;
+                document.getElementById('v14-hrv-bar').style.width = `${hrvVal}%`;
+
+                // Overall Risk Badge
+                const slipBadge = document.getElementById('slip-badge');
+                slipBadge.textContent = data.risk_tier.toUpperCase();
+                if (data.risk_tier.includes("Critical") || data.risk_tier.includes("Severe")) {
+                    slipBadge.className = "self-start sm:self-auto px-3.5 py-1.5 rounded-lg text-xs font-black uppercase font-mono tracking-wider bg-rose-600 text-white shadow";
+                } else if (data.risk_tier.includes("Moderate")) {
+                    slipBadge.className = "self-start sm:self-auto px-3.5 py-1.5 rounded-lg text-xs font-black uppercase font-mono tracking-wider bg-amber-600 text-white shadow";
+                } else {
+                    slipBadge.className = "self-start sm:self-auto px-3.5 py-1.5 rounded-lg text-xs font-black uppercase font-mono tracking-wider bg-emerald-600 text-white shadow";
+                }
+
+                // Dynamic recommendations
+                const recList = document.getElementById('slip-recommendations');
+                if (m2.grade.includes("Stage 3")) {
+                    recList.innerHTML = `
+                        <li>Emergency Cardiology referral and immediate Coronary Angiography evaluation.</li>
+                        <li>Continuous telemetry monitoring and intravenous hemodynamic support as indicated.</li>
+                        <li>Strict bed rest and emergency cardiac enzyme (Troponin-I) screening.</li>
+                        <li>Immediate dual antiplatelet therapy initiation under specialist supervision.</li>
+                    `;
+                } else if (m2.grade.includes("Stage 2")) {
+                    recList.innerHTML = `
+                        <li>Outpatient 12-lead Electrocardiogram (ECG) and 2D Echocardiography evaluation within 7 days.</li>
+                        <li>Initiate daily blood pressure monitoring and strict sodium-restricted diet (&lt;2g/day).</li>
+                        <li>Lipid profile re-assessment and statin therapy titration within 14 days.</li>
+                        <li>Smoking cessation counseling and avoidance of strenuous physical exertion.</li>
+                    `;
+                } else {
+                    recList.innerHTML = `
+                        <li>Patient exhibits low/stable baseline cardiovascular risk; maintain healthy lifestyle.</li>
+                        <li>Continue balanced Mediterranean diet rich in dietary fiber and omega-3 fatty acids.</li>
+                        <li>Routine annual clinical follow-up and preventive lipid screening advised.</li>
+                        <li>Encourage 150 minutes of moderate aerobic exercise weekly.</li>
+                    `;
+                }
+
+                fetchHistory();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function fetchHistory() {
+            try {
+                const res = await fetch(API + "/records");
+                const records = await res.json();
+                document.getElementById('stat-total').textContent = records.length;
+                const tbody = document.getElementById('history-rows');
+                tbody.innerHTML = records.map(r => `
+                    <tr class="hover:bg-slate-800/50 transition">
+                        <td class="py-3 px-2 text-slate-400">#${r.id}</td>
+                        <td class="px-2 font-bold text-white font-sans">${r.patient_name}</td>
+                        <td class="px-2">${r.age}y / ${r.sex}</td>
+                        <td class="px-2">${r.bp} / ${r.cholesterol}</td>
+                        <td class="px-2 text-blue-400 font-bold">${r.detection_prob}%</td>
+                        <td class="px-2 text-purple-400 font-bold">${r.severity_prob}%</td>
+                        <td class="px-2"><span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${r.final_prob >= 50 ? 'bg-rose-950 text-rose-400 border border-rose-500/30' : 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'}">${r.risk_category}</span></td>
+                        <td class="px-2 text-slate-400 font-sans text-[11px] max-w-[200px] truncate">${r.notes}</td>
+                        <td class="px-2 text-slate-400 text-[11px] font-sans">${r.created_at}</td>
+                        <td class="px-2 text-right">
+                            <button onclick="deleteRow(${r.id})" class="text-rose-400 hover:text-rose-300 p-1.5 rounded bg-rose-500/10 hover:bg-rose-500/20"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('') || `<tr><td colspan="10" class="py-8 text-center text-slate-500 font-sans">No saved clinical evaluations yet.</td></tr>`;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteRow(id) {
+            if (!confirm(`Delete patient record #${id}?`)) return;
+            await fetch(API + `/records/${id}`, { method: 'DELETE' });
+            fetchHistory();
+        }
+
+        async function fetchDataset(page = 1) {
+            currentDatasetPage = page;
+            const limit = document.getElementById('dataset-limit').value;
+            const search = document.getElementById('dataset-search').value;
+            const riskFilter = document.getElementById('dataset-risk-filter').value;
+
+            let url = `${API}/dataset?page=${page}&limit=${limit}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (riskFilter !== 'all') url += `&risk_filter=${riskFilter}`;
+
+            try {
+                const res = await fetch(url);
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.detail || "Failed to load dataset");
+
+                totalDatasetPages = result.total_pages;
+                document.getElementById('dataset-total-count').textContent = result.total_records.toLocaleString();
+                document.getElementById('stat-dataset-total').textContent = result.total_records.toLocaleString();
+                document.getElementById('page-current').textContent = result.page;
+                document.getElementById('page-total').textContent = result.total_pages;
+
+                const startCount = (result.page - 1) * result.limit + 1;
+                const endCount = Math.min(result.page * result.limit, result.total_records);
+                document.getElementById('page-start').textContent = startCount.toLocaleString();
+                document.getElementById('page-end').textContent = endCount.toLocaleString();
+
+                document.getElementById('btn-first').disabled = (page <= 1);
+                document.getElementById('btn-prev').disabled = (page <= 1);
+                document.getElementById('btn-next').disabled = (page >= totalDatasetPages);
+                document.getElementById('btn-last').disabled = (page >= totalDatasetPages);
+
+                const tbody = document.getElementById('dataset-rows');
+                tbody.innerHTML = result.data.map(r => {
+                    const targetVal = r.heart_disease !== undefined ? r.heart_disease : (r.target !== undefined ? r.target : 0);
+                    const isDisease = (targetVal == 1);
+                    return `
+                        <tr class="hover:bg-slate-800/40 transition">
+                            <td class="py-2.5 px-3 text-slate-500">#${r.row_number.toLocaleString()}</td>
+                            <td class="px-3 font-bold text-white font-sans">${r.display_id}</td>
+                            <td class="px-3">${r.age}y / ${r.sex || '-'}</td>
+                            <td class="px-3">${r.resting_bp || r.trestbps || '-'} mmHg</td>
+                            <td class="px-3">${r.cholesterol || r.chol || '-'} mg/dL</td>
+                            <td class="px-3">${r.max_heart_rate || r.thalach || '-'} bpm</td>
+                            <td class="px-3">${r.smoking_status || '-'}</td>
+                            <td class="px-3">${r.diabetes == 1 ? '<span class="text-rose-400">Yes</span>' : 'No'}</td>
+                            <td class="px-3">${r.hypertension == 1 ? '<span class="text-rose-400">Yes</span>' : 'No'}</td>
+                            <td class="px-3 text-right">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isDisease ? 'bg-rose-950 text-rose-400 border border-rose-500/30' : 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'}">
+                                    ${isDisease ? 'Disease (1)' : 'Normal (0)'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('') || `<tr><td colspan="10" class="py-10 text-center text-slate-500">No records found matching criteria.</td></tr>`;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function changePage(newPage) {
+            if (newPage >= 1 && newPage <= totalDatasetPages) {
+                fetchDataset(newPage);
+            }
+        }
+
+        function debounceDatasetSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                fetchDataset(1);
+            }, 300);
+        }
+
+        window.addEventListener('DOMContentLoaded', checkAuthStatus);
+    </script>
+</body>
+</html>

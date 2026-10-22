@@ -1,0 +1,25 @@
+# Environments
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Database files
+*.db
+*.sqlite3
+
+# Large CSV (agar 100MB se badi ho to ignore karein, varna rehne dein)
+# heart_disease_prediction_2026.csv
+
+# System files
+.DS_Store
+.vscode/
+backend/saved_models/*.pkl
+*.pkl
+heart_disease_prediction_2026.csv
+__pycache__/
+*.pyc
+*.db
+*.sqlite3
+venv/
+env/

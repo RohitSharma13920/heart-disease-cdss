@@ -1,0 +1,10 @@
+﻿backend/saved_models/*.pkl
+*.pkl
+heart_disease_prediction_2026.csv
+heart_disease_enterprise.db
+*.db
+*.sqlite3
+__pycache__/
+*.pyc
+venv/
+env/
